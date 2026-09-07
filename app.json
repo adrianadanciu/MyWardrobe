@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "MyWardrobe",
+    "slug": "mywardrobe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "MyWardrobe uses the camera so you can take a photo of the item you're adding.",
+        "NSPhotoLibraryUsageDescription": "MyWardrobe needs gallery access so you can pick a photo of your item.",
+        "NSLocationWhenInUseUsageDescription": "MyWardrobe uses your location to automatically detect the outside temperature."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2F6F77",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "MyWardrobe needs gallery access so you can pick a photo of your item.",
+          "cameraPermission": "MyWardrobe uses the camera so you can take a photo of the item you're adding."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MyWardrobe uses your location to automatically detect the outside temperature."
+        }
+      ]
+    ]
+  }
+}
