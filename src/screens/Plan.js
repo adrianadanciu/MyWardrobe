@@ -1,8 +1,8 @@
-import React, {useState, useEffect, useMemo, useCallback} from 'react';
+import React, {useState, useEffect, useMemo, useCallback, useRef} from 'react';
 import {View, Text, ScrollView, TextInput, Pressable, ActivityIndicator, Alert, StyleSheet , KeyboardAvoidingView, Platform} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
-import {CalendarDays, MapPin, Droplet, Plane, Moon, Bookmark, Trash2, Clock, Square, CheckSquare, ListChecks} from 'lucide-react-native';
+import {CalendarDays, MapPin, Droplet, Plane, Moon, Bookmark, Trash2, Clock, Square, CheckSquare, ListChecks, ShoppingBag} from 'lucide-react-native';
 import {generateOutfit} from '../utils/ColorTheory';
 import {getCurrentCoords, fetchForecast, fetchDailyHourlyWindows, geocodeCity} from '../services/Weather';
 import {loadBeautyItems, loadSavedPlans, saveSavedPlans, loadItems, loadProfile} from '../services/Storage';
@@ -25,7 +25,7 @@ function defaultPlanLabel(numDays, destination, dayOffset) {
     return destination ? `${destination} trip` : `${numDays}-day trip`;
 }
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-export default function Plan() {
+export default function Plan({navigation}) {
     const {colors} = useTheme();
     const styles = useMemo(() => getStyles(colors), [colors]);
     //plan is a bottom tab now, not a screen pushed from home with params, so it loads the wardrobe/profile itself and refreshes on focus
@@ -47,8 +47,8 @@ export default function Plan() {
         );
     }, []);
     useFocusEffect(useCallback(() => {reloadWardrobe();}, [reloadWardrobe]));
-    const [planMode, setPlanMode] = useState('outfit'); 
-    const [dayOffset, setDayOffset] = useState('today'); 
+    const [planMode, setPlanMode] = useState('outfit');
+    const [dayOffset, setDayOffset] = useState('today');
     const [occasion, setOccasion] = useState(null);
     const [days, setDays] = useState('3');
     const [destination, setDestination] = useState('');
@@ -63,6 +63,7 @@ export default function Plan() {
     const [planLabel, setPlanLabel] = useState('');
     const [beautyItems, setBeautyItems] = useState([]);
     const [savedPlans, setSavedPlans] = useState([]);
+    //remembers the items the last generated plan picked
     useEffect(() => {loadBeautyItems().then(setBeautyItems);}, []);
     const reloadSavedPlans = useCallback(() => {loadSavedPlans().then(setSavedPlans);}, []);
     useFocusEffect(useCallback(() => {reloadSavedPlans();}, [reloadSavedPlans]));
@@ -153,7 +154,9 @@ export default function Plan() {
             }
             if (planMode === 'outfit') dayTemps = dayTemps.slice(-1);
             const dayOccasion = planMode === 'outfit' ? occasion : null;
-            const usedThisTrip = new Set();
+            //seeded with whatever the last press picked, so hitting "Plan outfits" again with unchanged
+            //settings is nudged toward a different combo instead of the same one every time
+            const usedThisTrip = new Set(lastPlanItemIdsRef.current);
             const planDays = [];
             for (const day of dayTemps){
                 const result = generateOutfit(items, day.temp, season, bodyShape, dayOccasion, day.tempRange, false, false, usedThisTrip, personalStyle, bodyMeasurements, flying);
@@ -182,6 +185,7 @@ export default function Plan() {
             }
             setPlan({locationLabel, days: planDays, commute, commuteReturn, eveningArrival, washHair: planMode === 'trip' ? washHairValue : true});
             setPlanLabel(defaultPlanLabel(planMode === 'outfit' ? 1 : numDays, destination.trim(), dayOffset));
+            lastPlanItemIdsRef.current = Array.from(usedThisTrip);
         } 
         catch (e){
             setError(e.message || 'Something went wrong.');
@@ -355,16 +359,6 @@ export default function Plan() {
                         <>
                             <View style={styles.hourInputRow}>
                                 <View style={styles.hourInputCol}>
-                                    <Text style={styles.miniLabel}>Hours out (1-24)</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        keyboardType="numeric"
-                                        value={String(hoursOut)}
-                                        onChangeText={(v) => setHoursOut(v === '' ? '' : Math.max(1, Math.min(24, parseInt(v, 10) || 1)))}
-                                        onBlur={() => setHoursOut((h) => (h === '' || h == null ? 8 : h))}
-                                    />
-                                </View>
-                                <View style={styles.hourInputCol}>
                                     <Text style={styles.miniLabel}>Leaving at (0-23h, {formatHour12(departureHour)})</Text>
                                     <TextInput
                                         style={styles.input}
@@ -372,6 +366,16 @@ export default function Plan() {
                                         value={String(departureHour)}
                                         onChangeText={(v) => setDepartureHour(v === '' ? '' : Math.max(0, Math.min(23, parseInt(v, 10) || 0)))}
                                         onBlur={() => setDepartureHour((h) => (h === '' || h == null ? 8 : h))}
+                                    />
+                                </View>
+                                <View style={styles.hourInputCol}>
+                                    <Text style={styles.miniLabel}>Hours out (1-24)</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        keyboardType="numeric"
+                                        value={String(hoursOut)}
+                                        onChangeText={(v) => setHoursOut(v === '' ? '' : Math.max(1, Math.min(24, parseInt(v, 10) || 1)))}
+                                        onBlur={() => setHoursOut((h) => (h === '' || h == null ? 8 : h))}
                                     />
                                 </View>
                             </View>
@@ -412,6 +416,15 @@ export default function Plan() {
                             {washHairValue ? 'Hair-wash products will be included in your packing checklist.' : "Hair-wash products won't be added to your packing checklist."}
                         </Text>
                     </View>
+                )}
+                {planMode === 'outfit' && (
+                    <Pressable
+                        style={styles.askRow}
+                        onPress={() => navigation.navigate('Advice', {items, season, bodyShape, occasion})}
+                    >
+                        <ShoppingBag size={14} color={colors.ink} />
+                        <Text style={styles.askText}>Ask for something specific</Text>
+                    </Pressable>
                 )}
                 <Pressable style={[styles.planBtn, loading && styles.planBtnDisabled]} onPress={handlePlan} disabled={loading}>
                     {loading ? <ActivityIndicator color={colors.onAccent} /> : (
@@ -671,6 +684,8 @@ const getStyles = (colors) => StyleSheet.create({
     results: {marginTop: 22},
     locationRow: {flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12},
     locationText: {fontSize: 12, color: colors.inkSoft, fontStyle: 'italic'},
+    askRow: {flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14},
+    askText: {fontSize: 12.5, fontWeight: '600', color: colors.ink, textDecorationLine: 'underline'},
     dayCard: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, padding: 12, marginBottom: 10},
     dayHeaderRow: {flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8},
     dayDate: {fontWeight: '700', fontSize: 13.5, color: colors.ink},
