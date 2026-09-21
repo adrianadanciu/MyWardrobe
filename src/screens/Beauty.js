@@ -76,7 +76,7 @@ export default function Beauty({navigation}) {
     const counts = {};
     BEAUTY_CATEGORY_ORDER.forEach((c) => {counts[c] = active.filter((i) => i.category === c).length;});
     return (
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <SafeAreaView style={styles.safe} edges={[]}>
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.topRow}>
                     <Text style={styles.stats}>{active.length} product{active.length === 1 ? '' : 's'} in rotation</Text>

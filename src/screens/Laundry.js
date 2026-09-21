@@ -49,7 +49,7 @@ export default function Laundry() {
         );
     }
     return(
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <SafeAreaView style={styles.safe} edges={[]}>
             <ScrollView contentContainerStyle={styles.scroll}>
                 <Text style={styles.intro}>
                     Tracked automatically as you wear things: tops and dresses after 1 wear, pants and skirts after {WASH_THRESHOLD.pants},

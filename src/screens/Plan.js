@@ -270,7 +270,7 @@ export default function Plan({navigation}) {
         return Array.from(seen.values());
     }, [plan, items]);
     return(
-        <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <SafeAreaView style={styles.safe} edges={[]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{flex: 1}}
