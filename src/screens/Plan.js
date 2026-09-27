@@ -63,7 +63,9 @@ export default function Plan({navigation}) {
     const [planLabel, setPlanLabel] = useState('');
     const [beautyItems, setBeautyItems] = useState([]);
     const [savedPlans, setSavedPlans] = useState([]);
-    //remembers the items the last generated plan picked
+    //remembers the items the last generated plan picked, so pressing "Plan outfits" again with the same
+    //settings nudges the generator away from repeating the exact same combo instead of just returning it again
+    const lastPlanItemIdsRef = useRef([]);
     useEffect(() => {loadBeautyItems().then(setBeautyItems);}, []);
     const reloadSavedPlans = useCallback(() => {loadSavedPlans().then(setSavedPlans);}, []);
     useFocusEffect(useCallback(() => {reloadSavedPlans();}, [reloadSavedPlans]));
