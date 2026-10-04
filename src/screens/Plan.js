@@ -464,10 +464,10 @@ export default function Plan({navigation}) {
                                 {plan.commute.itemIds?.length > 0 ? (
                                     <View style={styles.chipRow}>
                                         {resolveItems(plan.commute.itemIds).map((p) => (
-                                            <View key={p.id} style={styles.chip}>
+                                            <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
                                                 <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
                                                 <Text style={styles.chipText}>{p.name}</Text>
-                                            </View>
+                                            </Pressable>
                                         ))}
                                     </View>
                                 ) : (
@@ -487,10 +487,10 @@ export default function Plan({navigation}) {
                                 </View>
                                 <View style={styles.chipRow}>
                                     {resolveItems(plan.eveningArrival.itemIds).map((p) => (
-                                        <View key={p.id} style={styles.chip}>
+                                        <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
                                             <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
                                             <Text style={styles.chipText}>{p.name}</Text>
-                                        </View>
+                                        </Pressable>
                                     ))}
                                 </View>
                                 <Text style={styles.commuteHint}>Optional: something a little dressier for once you've arrived and settled in, if you have plans that evening.</Text>
@@ -505,10 +505,10 @@ export default function Plan({navigation}) {
                                 {d.itemIds?.length > 0 ? (
                                     <View style={styles.chipRow}>
                                         {resolveItems(d.itemIds).map((p) => (
-                                            <View key={p.id} style={styles.chip}>
+                                            <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
                                                 <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
                                                 <Text style={styles.chipText}>{p.name}</Text>
-                                            </View>
+                                            </Pressable>
                                         ))}
                                     </View>
                                 ) : (
@@ -528,10 +528,10 @@ export default function Plan({navigation}) {
                                 {plan.commuteReturn.itemIds?.length > 0 ? (
                                     <View style={styles.chipRow}>
                                         {resolveItems(plan.commuteReturn.itemIds).map((p) => (
-                                            <View key={p.id} style={styles.chip}>
+                                            <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
                                                 <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
                                                 <Text style={styles.chipText}>{p.name}</Text>
-                                            </View>
+                                            </Pressable>
                                         ))}
                                     </View>
                                 ) : (
@@ -545,10 +545,10 @@ export default function Plan({navigation}) {
                                 <Text style={styles.packTitle}>Pack these ({packingList.length} items)</Text>
                                 <View style={styles.chipRow}>
                                     {packingList.map((p) => (
-                                        <View key={p.id} style={styles.chip}>
+                                        <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
                                             <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
                                             <Text style={styles.chipText}>{p.name}</Text>
-                                        </View>
+                                        </Pressable>
                                     ))}
                                 </View>
                             </View>
