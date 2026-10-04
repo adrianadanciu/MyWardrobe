@@ -19,11 +19,20 @@ const formatHour12 = (h) => {
 };
 function defaultPlanLabel(numDays, destination, dayOffset) {
     if (numDays === 1) {
-        const dayLabel = dayOffset === 'tomorrow' ? 'Tomorrow' : 'Today';
+        const dayLabel = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : `In ${dayOffset} days`;
         return destination ? `${dayLabel} in ${destination}` : dayLabel;
     }
     return destination ? `${destination} trip` : `${numDays}-day trip`;
 }
+const DAY_AHEAD_OPTIONS = [
+    {value: 0, label: 'Today'},
+    {value: 1, label: 'Tomorrow'},
+    {value: 2, label: 'In 2 days'},
+    {value: 3, label: 'In 3 days'},
+    {value: 4, label: 'In 4 days'},
+    {value: 5, label: 'In 5 days'},
+    {value: 6, label: 'In 6 days'},
+];
 const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 export default function Plan({navigation}) {
     const {colors} = useTheme();
@@ -48,7 +57,7 @@ export default function Plan({navigation}) {
     }, []);
     useFocusEffect(useCallback(() => {reloadWardrobe();}, [reloadWardrobe]));
     const [planMode, setPlanMode] = useState('outfit');
-    const [dayOffset, setDayOffset] = useState('today');
+    const [dayOffset, setDayOffset] = useState(0);
     const [occasion, setOccasion] = useState(null);
     const [days, setDays] = useState('3');
     const [destination, setDestination] = useState('');
@@ -122,7 +131,8 @@ export default function Plan({navigation}) {
     const washHairDefault = numDaysForWashHair >= 4;
     const washHairValue = washHairOverride !== null ? washHairOverride : washHairDefault;
     const handlePlan = async () => {
-        const numDays = planMode === 'outfit' ? (dayOffset === 'tomorrow' ? 2 : 1) : Math.max(1, Math.min(14, parseInt(days, 10) || 1));
+        //calculates for how many days we need the meteo prognosis
+        const numDays = planMode === 'outfit' ? dayOffset + 1 : Math.max(1, Math.min(14, parseInt(days, 10) || 1));
         setLoading(true);
         setError(null);
         setPlan(null);
@@ -311,13 +321,12 @@ export default function Plan({navigation}) {
                 {planMode === 'outfit' && (
                     <View style={styles.field}>
                         <Text style={styles.label}>Which day?</Text>
-                        <View style={styles.flyRow}>
-                            <Pressable style={[styles.flyPill, dayOffset === 'today' && styles.flyPillActive]} onPress={() => setDayOffset('today')}>
-                                <Text style={[styles.flyPillText, dayOffset === 'today' && styles.flyPillTextActive]}>Today</Text>
-                            </Pressable>
-                            <Pressable style={[styles.flyPill, dayOffset === 'tomorrow' && styles.flyPillActive]} onPress={() => setDayOffset('tomorrow')}>
-                                <Text style={[styles.flyPillText, dayOffset === 'tomorrow' && styles.flyPillTextActive]}>Tomorrow</Text>
-                            </Pressable>
+                        <View style={styles.occasionRow}>
+                            {DAY_AHEAD_OPTIONS.map((opt) => (
+                                <Pressable key={opt.value} style={[styles.occasionPill, dayOffset === opt.value && styles.occasionPillActive]} onPress={() => setDayOffset(opt.value)}>
+                                    <Text style={[styles.occasionPillText, dayOffset === opt.value && styles.occasionPillTextActive]}>{opt.label}</Text>
+                                </Pressable>
+                            ))}
                         </View>
                     </View>
                 )}
