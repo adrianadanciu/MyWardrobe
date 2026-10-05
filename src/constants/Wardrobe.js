@@ -47,7 +47,7 @@ function expandCategoryRules({top, pants, ...rest}) {
 export const WARMTH_RULES = {
     hot: expandCategoryRules({top: ['light'], dress: ['light'], pants: ['light'], skirt: ['light'], outerwear: []}),
     warm: expandCategoryRules({top: ['light', 'lightMedium', 'medium'], dress: ['light', 'lightMedium', 'medium'], pants: ['light', 'lightMedium', 'medium'], skirt: ['light', 'lightMedium', 'medium'], outerwear: ['light', 'lightMedium']}),
-    cool: expandCategoryRules({top: ['lightMedium', 'medium', 'mediumHeavy', 'heavy', 'light'], dress: ['lightMedium', 'medium', 'mediumHeavy', 'heavy', 'light'], pants: ['lightMedium', 'medium', 'mediumHeavy', 'heavy', 'light'], skirt: ['lightMedium', 'medium', 'mediumHeavy', 'heavy', 'light'], outerwear: ['light', 'lightMedium', 'medium']}),
+    cool: expandCategoryRules({top: ['lightMedium', 'medium', 'mediumHeavy', 'heavy'], dress: ['lightMedium', 'medium', 'mediumHeavy', 'heavy'], pants: ['lightMedium', 'medium', 'mediumHeavy', 'heavy'], skirt: ['lightMedium', 'medium', 'mediumHeavy', 'heavy'], outerwear: ['light', 'lightMedium', 'medium']}),
     cold: expandCategoryRules({top: ['heavy', 'mediumHeavy', 'medium'], dress: ['heavy', 'mediumHeavy', 'medium'], pants: ['heavy', 'mediumHeavy', 'medium'], skirt: ['heavy', 'mediumHeavy', 'medium'], outerwear: ['medium', 'mediumHeavy', 'heavy']}),
 };
 export const BRACKET_LABEL = {hot: 'Hot', warm: 'Mild', cool: 'Cool', cold: 'Cold'};

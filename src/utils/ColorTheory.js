@@ -176,7 +176,7 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
     const warmBracket = getBracket(tempRange ? tempRange.max : temp);
     //decides the minimum temperature for the day
     const coldBracket = getBracket(tempRange ? tempRange.min : temp);
-    const baseRules = WARMTH_RULES[warmBracket];
+    const baseRules = WARMTH_RULES[coldBracket];
     const outerRules = WARMTH_RULES[coldBracket];
     const layeringAdvised = warmBracket !== coldBracket;
     const strictOccasion = occasion && STRICT_OCCASIONS.includes(occasion);
