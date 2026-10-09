@@ -1,4 +1,4 @@
-import {WARMTH_RULES, TOP_CATEGORIES, PANTS_CATEGORIES, BOTTOM_CATEGORIES} from '../constants/Wardrobe';
+import {WARMTH_RULES, WARMTH_ORDER, TOP_CATEGORIES, PANTS_CATEGORIES, BOTTOM_CATEGORIES} from '../constants/Wardrobe';
 import {SEASON} from '../constants/ColorSeasons';
 import {BODY_SHAPE, FIT} from '../constants/BodyShapes';
 import {STRICT_OCCASIONS} from '../constants/Occasions';
@@ -44,11 +44,34 @@ export function classifyPair(hexA, hexB) {
         return {type: 'triadic', score: 3.5};
     return {type: 'free contrast', score: 1.5};
 }
+//shifted 5 degrees colder than a plain thermometer reading: she runs cold, so it takes more heat to count as "warm"
 export function getBracket(t) {
-    if (t >= 24) return 'hot';
-    if (t >= 17) return 'warm';
-    if (t >= 9) return 'cool';
+    if (t >= 29) return 'hot';
+    if (t >= 22) return 'warm';
+    if (t >= 14) return 'cool';
     return 'cold';
+}
+const WARMTH_POINTS = {light: 1, lightMedium: 2, medium: 3, mediumHeavy: 4, heavy: 5};
+const COVERAGE = {
+    tank: 0.4, bodysuit: 0.7, tshirt: 0.7, shirt: 0.9, blouse: 0.9, sweater: 1.3, hoodie: 1.3,
+    dress: 1.6,
+    jeans: 1, trousers: 1, leggings: 0.8, skirt: 0.6,
+    outerwear: 1.4,
+};
+const CROPPED_KEYWORDS = ['shrug', 'bolero', 'crop'];
+export function itemWarmthPoints(item) {
+    if (!item) return 0;
+    const base = WARMTH_POINTS[item.warmth] ?? 2;
+    let coverage = COVERAGE[item.category] ?? 0.8;
+    if (CROPPED_KEYWORDS.some((k) => (item.name || '').toLowerCase().includes(k))) coverage = Math.min(coverage, 0.5);
+    return base * coverage;
+}
+//a curve over the actual low rather than one figure per bracket
+export function warmthNeededFor(lowTemp) {
+    if (lowTemp == null) return 0;
+    if (lowTemp >= 24) return 0;
+    if (lowTemp >= 20) return (24 - lowTemp) * 1.35;
+    return Math.min(10, 5.4 + (20 - lowTemp) * 0.45);
 }
 const hueWarmth = (h) => Math.cos((h - 30) * Math.PI / 180);
 const rangeDistance = (v, [min, max]) => (v < min ? min - v : v > max ? v - max : 0);
@@ -186,20 +209,40 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
             ? i.occasions?.includes(occasion)
             : (!i.occasions || !i.occasions.length || i.occasions.includes(occasion))))
         : clean;
-    const byCat = (cat) => eligible.filter((i) => i.category === cat);
-    const filterWarmth = (list, allowed) => {
-        if (!allowed) return list;
-        const f = list.filter((i) => allowed.includes(i.warmth));
+    const isLowKeyOccasion = !occasion || occasion === 'loungewear';
+    const eligibleForOccasion = isLowKeyOccasion ? eligible : eligible.filter((i) => !i.casualOnly);
+    const byCategory = (category) => eligibleForOccasion.filter((i) => i.category === category);
+    const warmthRank = (item) => WARMTH_ORDER.indexOf(item.warmth); 
+    const filterWarmth = (list, allowed) => (allowed ? list.filter((i) => allowed.includes(i.warmth)) : list);
+    const warmestOf = (list) => {
+        if (!list.length) return list;
+        const warmestRank = Math.max(...list.map(warmthRank));
+        return list.filter((i) => warmthRank(i) === warmestRank);
+    };
+    const buildSlot = (categories) => {
+        const strict = categories.flatMap((category) => filterWarmth(byCategory(category), baseRules[category]));
+        if (strict.length) return strict;
+        return warmestOf(categories.flatMap((category) => byCategory(category)));
+    };
+    const SHORTS_KEYWORDS = ['shorts'];
+    const isShortsItem = (item) => SHORTS_KEYWORDS.some((k) => (item.name || '').toLowerCase().includes(k));
+    const coldBracketIsChilly = coldBracket === 'cool' || coldBracket === 'cold';
+    const excludeShortsIfChilly = (list) => {
+        if (!coldBracketIsChilly) return list;
+        const f = list.filter((i) => !isShortsItem(i));
         return f.length ? f : list;
     };
-    const tops = TOP_CATEGORIES.flatMap((cat) => filterWarmth(byCat(cat), baseRules[cat]));
-    const bottoms = [...PANTS_CATEGORIES.flatMap((cat) => filterWarmth(byCat(cat), baseRules[cat])), ...filterWarmth(byCat('skirt'), baseRules.skirt)];
-    const dresses = filterWarmth(byCat('dress'), baseRules.dress);
-    const outerFiltered = filterWarmth(byCat('outerwear'), outerRules.outerwear);
-    const shoesList = byCat('shoes');
-    const accessories = byCat('accessory');
-    const jewelryList = byCat('jewelry');
-    const bagsList = byCat('bag');
+    const tops = buildSlot(TOP_CATEGORIES);
+    const pantsOptions = buildSlot(PANTS_CATEGORIES);
+    const skirtOptions = buildSlot(['skirt']);
+    const skirtsAllowedWhenChilly = !coldBracketIsChilly || pantsOptions.length === 0;
+    const bottoms = excludeShortsIfChilly([...pantsOptions, ...(skirtsAllowedWhenChilly ? skirtOptions : [])]);
+    const dresses = buildSlot(['dress']);
+    const outerFiltered = filterWarmth(byCategory('outerwear'), outerRules.outerwear);
+    const shoesList = byCategory('shoes');
+    const accessories = byCategory('accessory');
+    const jewelryList = byCategory('jewelry');
+    const bagsList = byCategory('bag');
     const hasTopBottom = tops.length > 0 && bottoms.length > 0;
     if (!hasTopBottom && dresses.length === 0) {
         return {error: strictOccasion
@@ -210,8 +253,12 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
     }
     let outerOptions;
     if (coldBracket === 'hot') outerOptions = [null];
-    else if (coldBracket === 'cold') outerOptions = outerFiltered.length ? outerFiltered : (byCat('outerwear').length ? byCat('outerwear') : [null]);
+    else if (coldBracket === 'cold') outerOptions = outerFiltered.length ? outerFiltered : (byCategory('outerwear').length ? byCategory('outerwear') : [null]);
     else outerOptions = outerFiltered.length ? [...outerFiltered, null] : [null];
+    const SHRUG_KEYWORDS = ['shrug', 'bolero'];
+    const isShrugItem = (item) => SHRUG_KEYWORDS.some((k) => (item.name || '').toLowerCase().includes(k));
+    const shrugFitsOverTop = (top) => top.category === 'tank';
+    const onlyShrugsAvailable = outerOptions.length > 0 && outerOptions.every((o) => o && isShrugItem(o));
     //so you don't favour the same items every day
     const recencyBonus = (item) => {
         const d = daysBetween(item.lastWorn);
@@ -234,28 +281,52 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
     };
     const styleBonus = (item) => (styleList.length && item.styles?.some((s) => styleList.includes(s)) ? 2 : 0);
     const measureBonus = (item) => measurementFitScore(item, bodyMeasurements);
+    const warmthNeeded = warmthNeededFor(tempRange ? tempRange.min : temp);
+    const outfitWarmth = (...pieces) => pieces.reduce((sum, p) => sum + itemWarmthPoints(p), 0);
+    const warmthShortfall = (...pieces) => Math.max(0, warmthNeeded - outfitWarmth(...pieces));
+    const HIGH_NECK_KEYWORDS = ['turtleneck', 'polo neck', 'mock neck'];
+    const isBaseLayerCandidate = (item) => (
+        (item.category === 'tank' || item.category === 'bodysuit'
+            || (item.category === 'tshirt' && (item.warmth === 'light' || item.warmth === 'lightMedium')))
+        && !HIGH_NECK_KEYWORDS.some((k) => (item.name || '').toLowerCase().includes(k))
+    );
+    const LAYERS_OVER_A_BASE = ['shirt', 'blouse', 'sweater', 'hoodie'];
+    const baseLayerOptions = coldBracket === 'hot' ? [] : eligibleForOccasion.filter(isBaseLayerCandidate);
+    const baseLayersFor = (top, bottom, outer) => {
+        if (!LAYERS_OVER_A_BASE.includes(top.category) || !baseLayerOptions.length) return [null];
+        if (warmthShortfall(top, bottom, outer) <= 0) return [null];
+        return [null, ...baseLayerOptions];
+    };
     let bestTB = null;
     if (hasTopBottom){
         for (const top of tops){
             for (const bottom of bottoms){
                 for (const outer of outerOptions){
-                    const pairTB = classifyPair(top.colorHex, bottom.colorHex);
-                    let score = pairTB.score;
-                    if (outer) {
-                        score += classifyPair(top.colorHex, outer.colorHex).score * 0.6;
-                        score += classifyPair(bottom.colorHex, outer.colorHex).score * 0.6;
+                    if (!onlyShrugsAvailable && outer && isShrugItem(outer) && !shrugFitsOverTop(top)) continue;
+                    for (const base of baseLayersFor(top, bottom, outer)){
+                        if (base && base.id === top.id) continue;
+                        const pairTB = classifyPair(top.colorHex, bottom.colorHex);
+                        let score = pairTB.score;
+                        if (outer) {
+                            score += classifyPair(top.colorHex, outer.colorHex).score * 0.6;
+                            score += classifyPair(bottom.colorHex, outer.colorHex).score * 0.6;
+                        }
+                        if (base) score += classifyPair(top.colorHex, base.colorHex).score * 0.4;
+                        score += recencyBonus(top) + recencyBonus(bottom) + (outer ? recencyBonus(outer) : 0);
+                        score -= conditionPenalty(top) + conditionPenalty(bottom) + (outer ? conditionPenalty(outer) : 0);
+                        score += seasonBonus(top) + seasonBonus(bottom) + (outer ? seasonBonus(outer) : 0);
+                        score += fitBonus(top) + fitBonus(bottom) + (outer ? fitBonus(outer) : 0);
+                        score -= comfortPenalty(top) + comfortPenalty(bottom) + (outer ? comfortPenalty(outer) : 0);
+                        score -= avoidPenalty(top, 'top') + avoidPenalty(bottom, 'bottom') + (outer ? avoidPenalty(outer, 'outer') : 0);
+                        score += styleBonus(top) + styleBonus(bottom) + (outer ? styleBonus(outer) : 0);
+                        score += measureBonus(top) + measureBonus(bottom) + (outer ? measureBonus(outer) : 0);
+                        if (base) score -= conditionPenalty(base) + avoidPenalty(base, 'top');
+                        if (base) score -= 0.75;
+                        if (layeringAdvised && outer) score += 2;
+                        score -= warmthShortfall(top, bottom, outer, base) * 4;
+                        score += Math.random() * 0.05;
+                        if (!bestTB || score > bestTB.score) bestTB = {top, bottom, outer, base, score, mainType: pairTB.type};
                     }
-                    score += recencyBonus(top) + recencyBonus(bottom) + (outer ? recencyBonus(outer) : 0);
-                    score -= conditionPenalty(top) + conditionPenalty(bottom) + (outer ? conditionPenalty(outer) : 0);
-                    score += seasonBonus(top) + seasonBonus(bottom) + (outer ? seasonBonus(outer) : 0);
-                    score += fitBonus(top) + fitBonus(bottom) + (outer ? fitBonus(outer) : 0);
-                    score -= comfortPenalty(top) + comfortPenalty(bottom) + (outer ? comfortPenalty(outer) : 0);
-                    score -= avoidPenalty(top, 'top') + avoidPenalty(bottom, 'bottom') + (outer ? avoidPenalty(outer, 'outer') : 0);
-                    score += styleBonus(top) + styleBonus(bottom) + (outer ? styleBonus(outer) : 0);
-                    score += measureBonus(top) + measureBonus(bottom) + (outer ? measureBonus(outer) : 0);
-                    if (layeringAdvised && outer) score += 2;
-                    score += Math.random() * 0.05;
-                    if (!bestTB || score > bestTB.score) bestTB = {top, bottom, outer, score, mainType: pairTB.type};
                 }
             }
         }
@@ -281,10 +352,11 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
                     score -= 2;
                 if (preferElegant) 
                     score += 3;
-                if (layeringAdvised && outer) 
+                if (layeringAdvised && outer)
                     score += 2;
+                score -= warmthShortfall(dress, outer) * 4 * 2;
                 score += Math.random() * 0.05;
-                if (!bestDress || score > bestDress.score) 
+                if (!bestDress || score > bestDress.score)
                     bestDress = {dress, outer, score};
             }
         }
@@ -313,6 +385,7 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
     const bag = pickBestAccent(bagsList, mainAnchor, secondAnchor);
     return {
         top: useDress ? null : bestTB.top,
+        baseLayer: useDress ? null : (bestTB.base || null),
         bottom: useDress ? null : bestTB.bottom,
         dress: useDress ? bestDress.dress : null,
         outer: chosenOuter, shoe, accessory, jewelry, bag,
@@ -320,6 +393,9 @@ export function generateOutfit(items, temp, userSeason = null, bodyShape = null,
         harmonyType: useDress ? 'monochromatic' : bestTB.mainType,
         bracket: warmBracket, coldBracket, layeringAdvised,
         layeringGap: layeringAdvised && !chosenOuter,
+        warmthShortfall: useDress
+            ? warmthShortfall(bestDress.dress, chosenOuter)
+            : warmthShortfall(bestTB.top, bestTB.bottom, chosenOuter, bestTB.base),
         tempRange: tempRange || null,
     };
 }

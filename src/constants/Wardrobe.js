@@ -65,3 +65,10 @@ export function conditionFromScore(score) {
     if (score <= CONDITION.worn.max) return 'worn';
     return 'tired';
 }
+//the score can now be set by hand
+export function scoreForCondition(key) {
+    const idx = CONDITION_ORDER.indexOf(key);
+    if (idx === -1) return null;
+    const floor = idx === 0 ? 0 : CONDITION[CONDITION_ORDER[idx - 1]].max;
+    return Math.round((floor + CONDITION[key].max) / 2);
+}

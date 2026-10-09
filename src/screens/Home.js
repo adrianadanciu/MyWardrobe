@@ -99,7 +99,7 @@ export default function Home({navigation}) {
     const hoursOut = hoursOutText.trim() ? Math.max(1, Math.min(24, parseInt(hoursOutText, 10) || 1)) : null;
     const highlightIds = useMemo(() => {
         if (!outfit) return [];
-        return [outfit.top, outfit.dress, outfit.bottom, outfit.outer, outfit.shoe, outfit.accessory, outfit.jewelry, outfit.bag].filter(Boolean).map((i) => i.id);
+        return [outfit.baseLayer, outfit.top, outfit.dress, outfit.bottom, outfit.outer, outfit.shoe, outfit.accessory, outfit.jewelry, outfit.bag].filter(Boolean).map((i) => i.id);
     }, [outfit]);
     const [recentOutfitIds, setRecentOutfitIds] = useState([]);
     const handleGenerate = useCallback(async () => {
@@ -128,7 +128,7 @@ export default function Home({navigation}) {
         if (result.error) {setOutfit(null); setGenMessage(result.error); return;}
         setGenMessage(null);
         setOutfit(result);
-        const resultIds = [result.top, result.dress, result.bottom, result.outer, result.shoe, result.accessory, result.jewelry, result.bag].filter(Boolean).map((i) => i.id);
+        const resultIds = [result.baseLayer, result.top, result.dress, result.bottom, result.outer, result.shoe, result.accessory, result.jewelry, result.bag].filter(Boolean).map((i) => i.id);
         setRecentOutfitIds((prev) => [...prev, resultIds].slice(-2));
     }, [items, temp, season, bodyShape, occasion, hoursOut, coords, willGoIndoors, personalStyle, bodyMeasurements, recentOutfitIds]);
     const applyItems = (next) => {

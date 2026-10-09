@@ -172,13 +172,13 @@ export default function Plan({navigation}) {
             const planDays = [];
             for (const day of dayTemps){
                 const result = generateOutfit(items, day.temp, season, bodyShape, dayOccasion, day.tempRange, false, false, usedThisTrip, personalStyle, bodyMeasurements, flying);
-                const itemIds = result.error ? [] : [result.top, result.dress, result.bottom, result.outer, result.shoe, result.accessory, result.jewelry, result.bag].filter(Boolean).map((i) => i.id);
-                planDays.push({date: day.date, temp: day.temp, tempRange: day.tempRange, itemIds, error: result.error || null});
+                const itemIds = result.error ? [] : [result.baseLayer, result.top, result.dress, result.bottom, result.outer, result.shoe, result.accessory, result.jewelry, result.bag].filter(Boolean).map((i) => i.id);
+                planDays.push({date: day.date, temp: day.temp, tempRange: day.tempRange, itemIds, error: result.error || null, warmthShortfall: result.warmthShortfall || 0});
                 itemIds.forEach((id) => usedThisTrip.add(id));
             }
             const buildCommute = (dayTemp) => {
                 const cResult = generateOutfit(items, dayTemp.temp, season, bodyShape, 'travel', dayTemp.tempRange, true, false, usedThisTrip, personalStyle, bodyMeasurements, flying);
-                const itemIds = cResult.error ? [] : [cResult.top, cResult.dress, cResult.bottom, cResult.outer, cResult.shoe, cResult.accessory, cResult.jewelry, cResult.bag].filter(Boolean).map((i) => i.id);
+                const itemIds = cResult.error ? [] : [cResult.baseLayer, cResult.top, cResult.dress, cResult.bottom, cResult.outer, cResult.shoe, cResult.accessory, cResult.jewelry, cResult.bag].filter(Boolean).map((i) => i.id);
                 itemIds.forEach((id) => usedThisTrip.add(id));
                 return {temp: dayTemp.temp, tempRange: dayTemp.tempRange, itemIds, error: cResult.error || null};
             };
@@ -192,7 +192,7 @@ export default function Plan({navigation}) {
             if (planMode === 'trip' && dayTemps.length){
                 const first = dayTemps[0];
                 const eResult = generateOutfit(items, first.temp, season, bodyShape, null, first.tempRange, false, true, usedThisTrip, personalStyle, bodyMeasurements, flying);
-                const itemIds = eResult.error ? [] : [eResult.top, eResult.dress, eResult.bottom, eResult.outer, eResult.shoe, eResult.accessory, eResult.jewelry, eResult.bag].filter(Boolean).map((i) => i.id);
+                const itemIds = eResult.error ? [] : [eResult.baseLayer, eResult.top, eResult.dress, eResult.bottom, eResult.outer, eResult.shoe, eResult.accessory, eResult.jewelry, eResult.bag].filter(Boolean).map((i) => i.id);
                 eveningArrival = {temp: first.temp, tempRange: first.tempRange, itemIds, error: eResult.error || null};
             }
             setPlan({locationLabel, days: planDays, commute, commuteReturn, eveningArrival, washHair: planMode === 'trip' ? washHairValue : true});
@@ -503,14 +503,21 @@ export default function Plan({navigation}) {
                                     <Text style={styles.dayTemp}>{d.tempRange ? `${d.tempRange.min}°–${d.tempRange.max}°C` : `${d.temp}°C`}</Text>
                                 </View>
                                 {d.itemIds?.length > 0 ? (
-                                    <View style={styles.chipRow}>
-                                        {resolveItems(d.itemIds).map((p) => (
-                                            <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
-                                                <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
-                                                <Text style={styles.chipText}>{p.name}</Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
+                                    <>
+                                        <View style={styles.chipRow}>
+                                            {resolveItems(d.itemIds).map((p) => (
+                                                <Pressable key={p.id} style={styles.chip} onPress={() => navigation.navigate('EditItem', {item: p})}>
+                                                    <View style={[styles.chipSwatch, {backgroundColor: p.colorHex}]} />
+                                                    <Text style={styles.chipText}>{p.name}</Text>
+                                                </Pressable>
+                                            ))}
+                                        </View>
+                                        {d.warmthShortfall >= 1.5 && (
+                                            <Text style={styles.thinWarning}>
+                                                This may run thin for {d.tempRange ? `${d.tempRange.min}°` : `${d.temp}°`} — it's the warmest combination available from your wardrobe today. If something warmer is sitting in the Laundry basket, washing it would open up better options.
+                                            </Text>
+                                        )}
+                                    </>
                                 ) : (
                                     <Text style={styles.dayError}>{d.error || "Couldn't put together an outfit for this day."}</Text>
                                 )}
@@ -702,6 +709,7 @@ const getStyles = (colors) => StyleSheet.create({
     dayDate: {fontWeight: '700', fontSize: 13.5, color: colors.ink},
     dayTemp: {fontWeight: '700', fontSize: 13.5, color: colors.accent},
     dayError: {fontSize: 12, color: colors.danger},
+    thinWarning: {fontSize: 11.5, color: colors.warnText, lineHeight: 16, marginTop: 8, fontStyle: 'italic'},
     commuteCard: {borderColor: colors.accent, borderWidth: 1.5},
     planeReturn: {transform: [{scaleX: -1}]},
     //dashed instead of solid so it reads as optional, unlike the "getting there"/"heading back" cards which are always needed

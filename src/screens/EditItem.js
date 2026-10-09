@@ -3,7 +3,7 @@ import {View, Text, ScrollView, TextInput, Pressable, Image, ActivityIndicator, 
 import {SafeAreaView} from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {Camera, ImagePlus, Check, TriangleAlert, X} from 'lucide-react-native';
-import {CATEGORY, CATEGORY_ORDER, CLOTHING_CATEGORIES, BOTTOM_CATEGORIES, TOP_CATEGORIES, WARMTH, WARMTH_ORDER} from '../constants/Wardrobe';
+import {CATEGORY, CATEGORY_ORDER, CLOTHING_CATEGORIES, BOTTOM_CATEGORIES, TOP_CATEGORIES, WARMTH, WARMTH_ORDER, CONDITION, CONDITION_ORDER, conditionFromScore, scoreForCondition} from '../constants/Wardrobe';
 import {FIT_ORDER, FIT} from '../constants/BodyShapes';
 import {OCCASION_ORDER, OCCASION} from '../constants/Occasions';
 import {STYLE_ORDER, STYLE} from '../constants/Styles';
@@ -42,6 +42,8 @@ export default function EditItem({navigation, route}) {
         },
         dateAdded: original?.dateAdded || '',
         measurementsOverride: original?.measurementsOverride || false,
+        casualOnly: original?.casualOnly || false,
+        condition: conditionFromScore(original?.conditionScore),
     });
     const [profile, setProfile] = useState(null);
     useEffect(() => {loadProfile().then(setProfile);}, []);
@@ -110,8 +112,13 @@ export default function EditItem({navigation, route}) {
         }
         setSaving(true);
         try {
+            const originalCondition = conditionFromScore(original.conditionScore);
+            const conditionChanged = form.condition && form.condition !== originalCondition;
             const updated = {
                 ...original,
+                ...(conditionChanged
+                    ? {conditionScore: scoreForCondition(form.condition), conditionLabel: CONDITION[form.condition].label}
+                    : {}),
                 name: form.name.trim(),
                 category: form.category,
                 colorHex: form.colorHex,
@@ -119,6 +126,7 @@ export default function EditItem({navigation, route}) {
                 fit: form.fit,
                 occasions: form.occasions,
                 styles: form.styles,
+                casualOnly: form.casualOnly,
                 measurements: {
                     chestCm: form.measurements.chest ? Number(form.measurements.chest) : null,
                     waistCm: form.measurements.waist ? Number(form.measurements.waist) : null,
@@ -296,6 +304,16 @@ export default function EditItem({navigation, route}) {
                     </View>
                 )}
                 <View style={styles.field}>
+                    <Text style={styles.label}>Condition</Text>
+                    <View style={styles.segmented}>
+                        {CONDITION_ORDER.map((c) => (
+                            <Pressable key={c} style={[styles.segBtn, form.condition === c && styles.segBtnActive]} onPress={() => setForm({...form, condition: c})}>
+                                <Text style={[styles.segText, form.condition === c && styles.segTextActive]}>{CONDITION[c].label}</Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+                <View style={styles.field}>
                     <Text style={styles.label}>Occasions (optional: leave blank to use it anywhere)</Text>
                     <View style={styles.segmented}>
                         {OCCASION_ORDER.map((o) => {
@@ -325,6 +343,14 @@ export default function EditItem({navigation, route}) {
                         onChangeText={(v) => setForm({...form, dateAdded: v})}
                         onFocus={() => {if (!form.dateAdded) setForm((f) => ({...f, dateAdded: todayIso()}));}}
                     />
+                </View>
+                <View style={styles.field}>
+                    <Pressable style={styles.casualRow} onPress={() => setForm({...form, casualOnly: !form.casualOnly})}>
+                        <View style={[styles.casualCheckbox, form.casualOnly && styles.casualCheckboxChecked]}>
+                            {form.casualOnly && <Check size={12} color={colors.onAccent} />}
+                        </View>
+                        <Text style={styles.casualText}>Not a favorite</Text>
+                    </Pressable>
                 </View>
                 {visibleFitFlags.length > 0 && (
                     <View style={styles.mismatchBox}>
@@ -418,6 +444,11 @@ const getStyles = (colors) => StyleSheet.create({
     overrideCheckbox: {width: 18, height: 18, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.warnText, alignItems: 'center', justifyContent: 'center'},
     overrideCheckboxChecked: {backgroundColor: colors.accent, borderColor: colors.accent},
     overrideText: {flex: 1, fontSize: 11.5, color: colors.warnText, fontWeight: '600'},
+    conditionHint: {fontSize: 11, color: colors.inkSoft, fontStyle: 'italic', lineHeight: 15, marginTop: 7},
+    casualRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    casualCheckbox: {width: 18, height: 18, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.line, alignItems: 'center', justifyContent: 'center'},
+    casualCheckboxChecked: {backgroundColor: colors.accent, borderColor: colors.accent},
+    casualText: {flex: 1, fontSize: 12, color: colors.inkSoft, fontWeight: '500'},
     saveBtn: {backgroundColor: colors.accent, paddingVertical: 14, borderRadius: radius.md, alignItems: 'center', marginTop: 8},
     saveBtnDisabled: {opacity: 0.6},
     saveBtnSuccess: {backgroundColor: colors.success, opacity: 1},

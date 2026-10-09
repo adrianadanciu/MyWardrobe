@@ -11,7 +11,7 @@ export default function OutfitResult({outfit, onMarkWorn, onShopForLayer}) {
     const styles = useMemo(() => getStyles(colors, resolvedScheme), [colors, resolvedScheme]);
     //here is created a state loop, which keep tracks of whether a piece of clothing has been already logged
     const [logged, setLogged] = useState(false);
-    const pieces = [outfit.top, outfit.dress, outfit.bottom, outfit.outer, outfit.shoe, outfit.accessory, outfit.jewelry, outfit.bag].filter(Boolean);
+    const pieces = [outfit.baseLayer, outfit.top, outfit.dress, outfit.bottom, outfit.outer, outfit.shoe, outfit.accessory, outfit.jewelry, outfit.bag].filter(Boolean);
     const tiredPiece = pieces.find((p) => p.conditionScore != null && p.conditionScore >= 70);
     //a newly generated outfit is a fresh object each time, so the confirmation is reseted
     useEffect(() => {setLogged(false);}, [outfit]);
@@ -42,6 +42,11 @@ export default function OutfitResult({outfit, onMarkWorn, onShopForLayer}) {
                         </Pressable>
                     )}
                 </View>
+            )}
+            {outfit.baseLayer && outfit.top && (
+                <Text style={styles.layeringNote}>
+                    Wear the {outfit.baseLayer.name} under the {outfit.top.name} to be warm enough.
+                </Text>
             )}
             {/*prints the clothes with a small bubble for color and their name*/}
             <View style={styles.chipRow}>

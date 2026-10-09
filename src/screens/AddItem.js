@@ -5,7 +5,7 @@ import {View, Text, ScrollView, TextInput, Pressable, Image, ActivityIndicator, 
 import {SafeAreaView} from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {Camera, ImagePlus, RefreshCw, Check, TriangleAlert} from 'lucide-react-native';
-import {CATEGORY, CATEGORY_ORDER, CLOTHING_CATEGORIES, BOTTOM_CATEGORIES, TOP_CATEGORIES, WARMTH, WARMTH_ORDER, CONDITION, CONDITION_ORDER, conditionFromScore} from '../constants/Wardrobe';
+import {CATEGORY, CATEGORY_ORDER, CLOTHING_CATEGORIES, BOTTOM_CATEGORIES, TOP_CATEGORIES, WARMTH, WARMTH_ORDER, CONDITION, CONDITION_ORDER, conditionFromScore, scoreForCondition} from '../constants/Wardrobe';
 import {FIT_ORDER, FIT} from '../constants/BodyShapes';
 import {OCCASION_ORDER, OCCASION} from '../constants/Occasions';
 import {STYLE_ORDER, STYLE} from '../constants/Styles';
@@ -40,7 +40,7 @@ export default function AddItem({navigation}) {
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [duplicateMatches, setDuplicateMatches] = useState([]);
-    const [form, setForm] = useState({name: '', category: 'tshirt', warmth: 'medium', fit: 'relaxed', occasions: [], styles: [], measurements: {chest: '', waist: '', hips: ''}, colorHex: '#4A6FA5', dateAdded: todayIso(), measurementsOverride: false});
+    const [form, setForm] = useState({name: '', category: 'tshirt', warmth: 'medium', fit: 'relaxed', occasions: [], styles: [], measurements: {chest: '', waist: '', hips: ''}, colorHex: '#4A6FA5', dateAdded: todayIso(), measurementsOverride: false, casualOnly: false, condition: null});
     const [profile, setProfile] = useState(null);
     useEffect(() => {loadProfile().then(setProfile);}, []);
     const bodyMeasurements = useMemo(() => (
@@ -96,6 +96,7 @@ export default function AddItem({navigation}) {
                 warmth: result.warmthGuess || form.warmth,
                 fit: result.fitGuess || form.fit,
                 occasions: form.occasions.length ? form.occasions : (result.occasionsGuess || form.occasions),
+                condition: form.condition || conditionFromScore(result.conditionScore),
                 measurements: {
                     chest: form.measurements.chest || (result.chestCmGuess != null ? String(result.chestCmGuess) : form.measurements.chest),
                     waist: form.measurements.waist || (result.waistCmGuess != null ? String(result.waistCmGuess) : form.measurements.waist),
@@ -156,6 +157,7 @@ export default function AddItem({navigation}) {
                 fit: form.fit,
                 occasions: form.occasions,
                 styles: form.styles,
+                casualOnly: form.casualOnly,
                 measurements: {
                     chestCm: form.measurements.chest ? Number(form.measurements.chest) : null,
                     waistCm: form.measurements.waist ? Number(form.measurements.waist) : null,
@@ -166,8 +168,13 @@ export default function AddItem({navigation}) {
                 lastWorn: null,
                 wearCount: 0,
                 photoUri,
-                conditionScore: analysis?.conditionScore ?? null,
-                conditionLabel: analysis?.conditionLabel ?? null,
+                //whatever the photo analysis guessed, a condition the user picked by hand wins
+                conditionScore: form.condition && form.condition !== conditionFromScore(analysis?.conditionScore)
+                    ? scoreForCondition(form.condition)
+                    : (analysis?.conditionScore ?? null),
+                conditionLabel: form.condition && form.condition !== conditionFromScore(analysis?.conditionScore)
+                    ? CONDITION[form.condition].label
+                    : (analysis?.conditionLabel ?? null),
                 notes: analysis?.notes ?? null,
             };
             const current = await loadItems();
@@ -396,6 +403,16 @@ export default function AddItem({navigation}) {
                     </View>
                 )}
                 <View style={styles.field}>
+                    <Text style={styles.label}>Condition {analysis?.conditionScore != null ? '(detected from photo, feel free to change it)' : ''}</Text>
+                    <View style={styles.segmented}>
+                        {CONDITION_ORDER.map((c) => (
+                            <Pressable key={c} style={[styles.segBtn, form.condition === c && styles.segBtnActive]} onPress={() => setForm({...form, condition: c})}>
+                                <Text style={[styles.segText, form.condition === c && styles.segTextActive]}>{CONDITION[c].label}</Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+                <View style={styles.field}>
                     <Text style={styles.label}>Occasions (optional: leave blank to use it anywhere{analysis?.occasionsGuess?.length ? ', detected from photo' : ''})</Text>
                     <View style={styles.segmented}>
                         {OCCASION_ORDER.map((o) => {
@@ -418,6 +435,14 @@ export default function AddItem({navigation}) {
                 <View style={styles.field}>
                     <Text style={styles.label}>Purchase date (YYYY-MM-DD, or just the year, e.g. 2022, if that's all you remember)</Text>
                     <TextInput style={styles.input} placeholder={todayIso()} placeholderTextColor={colors.inkMuted} value={form.dateAdded} onChangeText={(v) => setForm({...form, dateAdded: v})} />
+                </View>
+                <View style={styles.field}>
+                    <Pressable style={styles.casualRow} onPress={() => setForm({...form, casualOnly: !form.casualOnly})}>
+                        <View style={[styles.casualCheckbox, form.casualOnly && styles.casualCheckboxChecked]}>
+                            {form.casualOnly && <Check size={12} color={colors.onAccent} />}
+                        </View>
+                        <Text style={styles.casualText}>Not a favorite</Text>
+                    </Pressable>
                 </View>
                 {visibleFitFlags.length > 0 && (
                     <View style={styles.mismatchBox}>
@@ -502,6 +527,11 @@ const getStyles = (colors) => StyleSheet.create({
     overrideCheckbox: {width: 18, height: 18, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.warnText, alignItems: 'center', justifyContent: 'center'},
     overrideCheckboxChecked: {backgroundColor: colors.accent, borderColor: colors.accent},
     overrideText: {flex: 1, fontSize: 11.5, color: colors.warnText, fontWeight: '600'},
+    conditionHint: {fontSize: 11, color: colors.inkSoft, fontStyle: 'italic', lineHeight: 15, marginTop: 7},
+    casualRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    casualCheckbox: {width: 18, height: 18, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.line, alignItems: 'center', justifyContent: 'center'},
+    casualCheckboxChecked: {backgroundColor: colors.accent, borderColor: colors.accent},
+    casualText: {flex: 1, fontSize: 12, color: colors.inkSoft, fontWeight: '500'},
     field: {marginBottom: 16},
     label: {fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: colors.inkSoft, fontWeight: '700', marginBottom: 7},
     input: {backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.ink},
