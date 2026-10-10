@@ -10,7 +10,7 @@ import {STYLE_ORDER, STYLE} from '../constants/Styles';
 import {todayIso, normalizeDateInput} from '../utils/Dates';
 import {loadItems, saveItems, loadProfile} from '../services/Storage';
 import {persistPhoto} from '../services/PhotoStorage';
-import {getFitFlags} from '../utils/ColorTheory';
+import {getFitFlags, filterOverriddenFlags} from '../utils/ColorTheory';
 import {useTheme} from '../theme/ThemeContext';
 import {radius} from '../theme/tokens';
 const COLOR_PRESETS = [
@@ -42,6 +42,7 @@ export default function EditItem({navigation, route}) {
         },
         dateAdded: original?.dateAdded || '',
         measurementsOverride: original?.measurementsOverride || false,
+        shapeOverride: original?.shapeOverride || false,
         casualOnly: original?.casualOnly || false,
         condition: conditionFromScore(original?.conditionScore),
     });
@@ -67,8 +68,8 @@ export default function EditItem({navigation, route}) {
         return getFitFlags(candidate, {season: profile.season, bodyShape: profile.bodyShape, bodyMeasurements});
     }, [profile, form.category, form.colorHex, form.fit, form.measurements, bodyMeasurements]);
     const visibleFitFlags = useMemo(
-        () => fitFlags.filter((f) => f.type !== 'measurements' || !form.measurementsOverride),
-        [fitFlags, form.measurementsOverride],
+        () => filterOverriddenFlags(fitFlags, form),
+        [fitFlags, form.measurementsOverride, form.shapeOverride],
     );
     useEffect(() => {
         const unsub = navigation.addListener('beforeRemove', (e) => {
@@ -133,6 +134,7 @@ export default function EditItem({navigation, route}) {
                     hipsCm: form.measurements.hips ? Number(form.measurements.hips) : null,
                 },
                 measurementsOverride: form.measurementsOverride,
+                shapeOverride: form.shapeOverride,
                 dateAdded: normalizeDateInput(form.dateAdded) || original.dateAdded || todayIso(),
                 photoUri,
             };
@@ -370,6 +372,17 @@ export default function EditItem({navigation, route}) {
                                     {form.measurementsOverride && <Check size={12} color={colors.onAccent} />}
                                 </View>
                                 <Text style={styles.overrideText}>This fits fine</Text>
+                            </Pressable>
+                        )}
+                        {fitFlags.some((f) => f.type === 'shape') && (
+                            <Pressable
+                                style={styles.overrideRow}
+                                onPress={() => setForm({...form, shapeOverride: !form.shapeOverride})}
+                            >
+                                <View style={[styles.overrideCheckbox, form.shapeOverride && styles.overrideCheckboxChecked]}>
+                                    {form.shapeOverride && <Check size={12} color={colors.onAccent} />}
+                                </View>
+                                <Text style={styles.overrideText}>Stop flagging the shape</Text>
                             </Pressable>
                         )}
                         <Text style={styles.mismatchHint}>Save it anyway if it's still worth keeping.</Text>

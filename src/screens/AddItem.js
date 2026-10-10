@@ -14,7 +14,7 @@ import {loadItems, saveItems, loadProfile} from '../services/Storage';
 import {persistPhoto} from '../services/PhotoStorage';
 import {analyzeClothingPhoto} from '../services/PhotoAnalysis';
 import {findPossibleDuplicates} from '../utils/DuplicateCheck';
-import {getFitFlags} from '../utils/ColorTheory';
+import {getFitFlags, filterOverriddenFlags} from '../utils/ColorTheory';
 import {useTheme} from '../theme/ThemeContext';
 import {radius} from '../theme/tokens';
 const COLOR_PRESETS = [
@@ -40,7 +40,7 @@ export default function AddItem({navigation}) {
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [duplicateMatches, setDuplicateMatches] = useState([]);
-    const [form, setForm] = useState({name: '', category: 'tshirt', warmth: 'medium', fit: 'relaxed', occasions: [], styles: [], measurements: {chest: '', waist: '', hips: ''}, colorHex: '#4A6FA5', dateAdded: todayIso(), measurementsOverride: false, casualOnly: false, condition: null});
+    const [form, setForm] = useState({name: '', category: 'tshirt', warmth: 'medium', fit: 'relaxed', occasions: [], styles: [], measurements: {chest: '', waist: '', hips: ''}, colorHex: '#4A6FA5', dateAdded: todayIso(), measurementsOverride: false, shapeOverride: false, casualOnly: false, condition: null});
     const [profile, setProfile] = useState(null);
     useEffect(() => {loadProfile().then(setProfile);}, []);
     const bodyMeasurements = useMemo(() => (
@@ -63,8 +63,8 @@ export default function AddItem({navigation}) {
         return getFitFlags(candidate, {season: profile.season, bodyShape: profile.bodyShape, bodyMeasurements});
     }, [profile, form.category, form.colorHex, form.fit, form.measurements, bodyMeasurements]);
     const visibleFitFlags = useMemo(
-        () => fitFlags.filter((f) => f.type !== 'measurements' || !form.measurementsOverride),
-        [fitFlags, form.measurementsOverride],
+        () => filterOverriddenFlags(fitFlags, form),
+        [fitFlags, form.measurementsOverride, form.shapeOverride],
     );
     useEffect(() => {
         const unsub = navigation.addListener('beforeRemove', (e) => {
@@ -164,6 +164,7 @@ export default function AddItem({navigation}) {
                     hipsCm: form.measurements.hips ? Number(form.measurements.hips) : null,
                 },
                 measurementsOverride: form.measurementsOverride,
+                shapeOverride: form.shapeOverride,
                 dateAdded: normalizeDateInput(form.dateAdded) || todayIso(),
                 lastWorn: null,
                 wearCount: 0,
@@ -462,6 +463,17 @@ export default function AddItem({navigation}) {
                                     {form.measurementsOverride && <Check size={12} color={colors.onAccent} />}
                                 </View>
                                 <Text style={styles.overrideText}>This fits fine — don't warn me about the measurements again</Text>
+                            </Pressable>
+                        )}
+                        {fitFlags.some((f) => f.type === 'shape') && (
+                            <Pressable
+                                style={styles.overrideRow}
+                                onPress={() => setForm({...form, shapeOverride: !form.shapeOverride})}
+                            >
+                                <View style={[styles.overrideCheckbox, form.shapeOverride && styles.overrideCheckboxChecked]}>
+                                    {form.shapeOverride && <Check size={12} color={colors.onAccent} />}
+                                </View>
+                                <Text style={styles.overrideText}>Don't warn me about the shape again</Text>
                             </Pressable>
                         )}
                         <Text style={styles.mismatchHint}>Save it anyway if it's still worth keeping.</Text>

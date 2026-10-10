@@ -193,6 +193,9 @@ export function getFitFlags(item, {season = null, bodyShape = null, bodyMeasurem
     }
     return flags;
 }
+export function filterOverriddenFlags(flags, {measurementsOverride = false, shapeOverride = false} = {}) {
+    return flags.filter((f) => !(f.type === 'measurements' && measurementsOverride) && !(f.type === 'shape' && shapeOverride));
+}
 export function generateOutfit(items, temp, userSeason = null, bodyShape = null, occasion = null, tempRange = null, preferComfort = false, preferElegant = false, avoidIds = null, personalStyle = null, bodyMeasurements = null, packLight = false) {
     const styleList = Array.isArray(personalStyle) ? personalStyle : personalStyle ? [personalStyle] : [];
     //decides the maximum temperature for the day

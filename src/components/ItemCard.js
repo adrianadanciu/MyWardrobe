@@ -5,7 +5,7 @@ import {WARMTH, CONDITION, conditionFromScore} from '../constants/Wardrobe';
 import {FIT} from '../constants/BodyShapes';
 import {OCCASION} from '../constants/Occasions';
 import {ageLabel, lastWornLabel} from '../utils/Dates';
-import {getFitFlags} from '../utils/ColorTheory';
+import {getFitFlags, filterOverriddenFlags} from '../utils/ColorTheory';
 import {useTheme} from '../theme/ThemeContext';
 import {radius, spacing, fonts, getShadow} from '../theme/tokens';
 import {haptics} from '../utils/Haptics';
@@ -17,7 +17,7 @@ export default function ItemCard({item, onDelete, onPress, season = null, bodySh
     const conditionKey = conditionFromScore(item.conditionScore);
     const condition = conditionKey ? CONDITION[conditionKey] : null;
     const fitFlags = useMemo(
-        () => getFitFlags(item, {season, bodyShape, bodyMeasurements}).filter((f) => f.type !== 'measurements' || !item.measurementsOverride),
+        () => filterOverriddenFlags(getFitFlags(item, {season, bodyShape, bodyMeasurements}), item),
         [item, season, bodyShape, bodyMeasurements]
     );
     const handleDelete = () => {
